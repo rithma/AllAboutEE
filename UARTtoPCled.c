@@ -1,5 +1,10 @@
 /*  using a serial port terminal,   tm4c123 asks user to input an r,g, or b, and changes led color accordingly. */
 
+/*in the future I would like to create a lil ting that displays my ADC value over the UART terminal*/
+/*but this ditty is bitchin now that it works.*/
+/*a small but very loud error exists right now, puTTy terminal is still diaplaying a large amount of garbage */
+/*which could be the result of a mis-configured puTTy.  Works fine when I switch over to coolterm OS X*/ 
+
 
 
 #include <lm4f120h5qr.h>
@@ -14,54 +19,29 @@ char* readString(char delimiter);
 int main(void) 
 {
     char c;
-    // 1. Enable the UART module using the RCGCUART register (see page 344).
-    SYSCTL->RCGCUART |= (1<<0);     //(1<<1) would enable RCGC on UART1, etc.
-    
-    // 2. Enable the clock to the appropriate GPIO module via the RCGCGPIO register (see page 340).
-    // To find out which GPIO port to enable, refer to Table 23-5 on page 1351.
-    SYSCTL->RCGCGPIO |= (1<<0);   //port B would be bit 1, port c bit 2, etc
-    
-    // 3. Set the GPIO AFSEL bits for the appropriate pins (see page 671). To determine which GPIOs to
-    // configure, see Table 23-4 on page 1344
-    GPIOA->AFSEL = (1<<1)|(1<<0); 
-    
-    // 4. Configure the GPIO current level and/or slew rate as specified for the mode selected (see
-    // page 673 and page 681
-    
-    // 5. Configure the PMCn fields in the GPIOPCTL register to assign the UART signals to the appropriate
-    // pins (see page 688 and Table 23-5 on page 1351).
-    GPIOA->PCTL = (1<<0)|(1<<4);  
-    
+    SYSCTL->RCGCUART |= (1<<0);       // 1. UART enable , RCGCUART register (see page 344). (1<<1) would enable RCGC on UART1, etc.
+    SYSCTL->RCGCGPIO |= (1<<0);       // 2.GPIO module clock enable (RCGCGPIO register (pg340) Table 23-5 on page 1351.)
+    GPIOA->AFSEL = (1<<1)|(1<<0);     // 3. Set the GPIO AFSEL bits for appr pins (pg 671).
+        // To determine which GPIOs toconfigure, see Table 23-4 on page 1344
+        // 4. Config GPIO current level / slew rate as specified for the mode selected (see pg673, pg 681)
+    GPIOA->PCTL = (1<<0)|(1<<4);      // 5. Config PMCn bits/GPIOPCTL_R, assigns the UART signals to pins (pg688 and Tbl 23-5 pg1351).
     GPIOA->DEN = (1<<0)|(1<<1); 
     
     // Find  the Baud-Rate Divisor
     // BRD = 16,000,000 / (16 * 9600) = 104.16666666666666666666666666666666666666666666666666
     // UARTFBRD[DIVFRAC] = integer(0.166667 * 64 + 0.5) = 11
-    
-    
-    // With the BRD values in hand, the UART configuration is written to the module in the following order
-                   
-    // 1. Disable the UART by clearing the UARTEN bit in the UARTCTL register
-    UART0->CTL &= ~(1<<0);
-    
-    // 2. Write the integer portion of the BRD to the UARTIBRD register
-    UART0->IBRD = 104;      
-    // 3. Write the fractional portion of the BRD to the UARTFBRD register.
-    UART0->FBRD = 11; 
-    
-    // 4. Write the desired serial parameters to the UARTLCRH register (in this case, a value of 0x0000.0060)
-    UART0->LCRH = (0x3<<5)|(1<<4);     // 8-bit, no parity, 1-stop bit
-    
-    // 5. Configure the UART clock source by writing to the UARTCC register
-    UART0->CC = 0x0;          
 
-    // 6. Optionally, configure the µDMA channel (see “Micro Direct Memory Access (µDMA)” on page 585)
-    // and enable the DMA option(s) in the UARTDMACTL register
-    
-    // 7. Enable the UART by setting the UARTEN bit in the UARTCTL register.
-    UART0->CTL = (1<<0)|(1<<8)|(1<<9); 
-    
-    // Configure LED pins
+/***********With the BRD values in hand***********/
+/***********UART config goes like this:***********/
+    UART0->CTL &= ~(1<<0);     // 1. Disable the UART by clearing the UARTEN bit in the UARTCTL register
+    UART0->IBRD = 104;         // 2. Write the integer portion of the BRD to the UARTIBRD register  
+    UART0->FBRD = 11;          // 3. Write the fractional portion of the BRD to the UARTFBRD register
+    UART0->LCRH = (0x3<<5)|(1<<4);  // 4.  UARTLCRH register serial parameters(a value of 0x0000.0060 8-bit, no parity, 1-stop bit)
+    UART0->CC = 0x0;          // 5. Configure the UART clock source by writing to the UARTCC register
+                             // 6. Optionally, configure the µDMA channel (see “Micro Direct Memory Access (µDMA)” on page 585)
+    UART0->CTL = (1<<0)|(1<<8)|(1<<9);  // 7. Enable the UART by setting the UARTEN bit in the UARTCTL register.
+
+/************ Configure LED pins************/
     SYSCTL->RCGCGPIO |= (1<<5); // enable clock on PortF
     GPIOF->DIR = (1<<1)|(1<<2)|(1<<3);  // make LED pins (PF1, PF2, and PF3) outputs
     GPIOF->DEN = (1<<1)|(1<<2)|(1<<3); // enable digital function on LED pins
